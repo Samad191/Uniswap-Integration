@@ -367,8 +367,8 @@
       ]
     },
     "/home/abdulsamad/Documents/Xord/Xord/Solutions/uniswapv3/contracts/Greeter.sol": {
-      "lastModificationDate": 1664119862728,
-      "contentHash": "721a9ca33090e13edd0013924887cf71",
+      "lastModificationDate": 1664120086756,
+      "contentHash": "287e5122fbd78e1686975e6af8f8c194",
       "sourceName": "contracts/Greeter.sol",
       "solcConfig": {
         "version": "0.8.0",
@@ -393,17 +393,15 @@
           }
         }
       },
-      "imports": [
-        "../interfaces/IUniswap.sol",
-        "../interfaces/IERC20.sol",
-        "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol"
-      ],
+      "imports": [],
       "versionPragmas": [
         "^0.8.0"
       ],
       "artifacts": [
-        "TransferHelper",
-        "UniswapV3Integration"
+        "IERC20",
+        "IUniswap",
+        "IUniswapV2Factory",
+        "TestAddLiquidity"
       ]
     },
     "/home/abdulsamad/Documents/Xord/Xord/Solutions/uniswapv3/interfaces/IUniswap.sol": {

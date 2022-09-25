@@ -1,136 +1,158 @@
 //SPDX-License-Identifier: Unlicense
-import '../interfaces/IUniswap.sol';
-import '../interfaces/IERC20.sol';
-import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
-
 pragma solidity ^0.8.0;
 
-library TransferHelper {
-    function safeTransferFrom(
-        address token,
+interface IERC20 {
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
+
+    function totalSupply() external view returns (uint256);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(address to, uint256 amount) external returns (bool);
+
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function mint(address to, uint256 amount) external returns (bool);
+
+    function transferFrom(
         address from,
         address to,
-        uint256 value
-    ) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'STF');
-    }
-
-    function safeTransfer(
-        address token,
-        address to,
-        uint256 value
-    ) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'ST');
-    }
-
-    function safeApprove(
-        address token,
-        address to,
-        uint256 value
-    ) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SA');
-    }
-
-    function safeTransferETH(address to, uint256 value) internal {
-        (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, 'STE');
-    }
+        uint256 amount
+    ) external returns (bool);
 }
 
-contract UniswapV3Integration {
+interface IUniswap {
 
-    ISwapRouter public immutable swapRouter;
-    // Pool fee is set to 0.3%
-    uint24 public constant poolFee = 3000;
+function addLiquidity(
+    address tokenA,
+    address tokenB,
+    uint256 amountADesired,
+    uint256 amountBDesired,
+    uint256 amountAMin,
+    uint256 amountBMin,
+    address to,
+    uint256 deadline
+) external returns(uint256 amountA, uint256 amountB, uint256 liquidity);
 
-    // Hard coded token addresses
-    // address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+ function getPair(address tokenA, address tokenB) external view returns (address pair);
 
-    address public constant DAI = 0xc7AD46e0b8a400Bb3C915120d284AafbA8fc4735;
-    address public constant ABC = 0x6e9c08467B3985F6B0bA324ca20813E208F2FcCb;
-    uint public constant TICK_SPACING = 10;
-    uint public constant MIN_TICK  = 5;
-    uint public constant MAX_TICK = 15;
+ function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB);
 
-    constructor(ISwapRouter _swapRouter) {
-        swapRouter = _swapRouter;
+    function swapExactTokensForTokens(
+    uint amountIn,
+    uint amountOutMin,
+    address[] calldata path,
+    // address tokenA,
+    // address tokenB,
+    address to,
+    uint deadline
+) external returns (uint[] memory amounts);
+
+}
+interface IUniswapV2Factory {
+    function getPair(address token0, address token1) external view returns (address);
+}
+
+contract TestAddLiquidity {
+
+    
+
+    // Uniswap factory contract Rinkeby
+    address private constant FACTORY = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+
+    // Uniswap router contract
+    address private constant ROUTER = 0xf164fC0Ec4E93095b804a4795bBe1e041497b92a;
+
+        function addLiquidity(
+        address _tokenA,
+        address _tokenB,
+        uint256 _amountA,
+        uint256 _amountB
+    ) public returns(uint256, uint256, uint256) {
+
+        IERC20(_tokenA).transferFrom(msg.sender, address(this), _amountA);
+        IERC20(_tokenB).transferFrom(msg.sender, address(this), _amountB);
+
+        IERC20(_tokenA).approve(ROUTER, _amountA);
+        IERC20(_tokenB).approve(ROUTER, _amountB);
+
+        (uint256 amountA, uint256 amountB, uint256 liquidity) = 
+            IUniswap(ROUTER).addLiquidity(
+            _tokenA, 
+            _tokenB, 
+            _amountA, 
+            _amountB, 
+            0, // Minimum liquidity
+            0, // Minimum liquidity
+            msg.sender,
+            block.timestamp + 86400);
+
+        return (amountA, amountB, liquidity);
+
     }
 
-    function swapExactInputSingle(uint256 amountIn) external returns(uint256 amountOut) {
-        TransferHelper.safeTransferFrom(DAI, msg.sender, address(this), amountIn);
-        TransferHelper.safeApprove(DAI, address(swapRouter), amountIn);
+      function removeLiquidity(
+        address _tokenA,
+        address _tokenB
+    ) public returns(uint amountA, uint amountB) {
 
+        address pair = 0xbB6d2561a7543A8F6Ad9eFa787Ce7Ab3f2E5F3fC;
 
-    ISwapRouter.ExactInputSingleParams memory params = 
-        ISwapRouter.ExactInputSingleParams({
-            tokenIn: DAI,
-            tokenOut: WETH9,
-            fee: poolFee,
-            recipient: msg.sender,
-            deadline: block.timestamp + 1000,
-            amountIn: amountIn,
-            amountOutMinimum: 0, // Slippage ---- amountIn == amountout
-            sqrtPriceLimitX96: 0    // Current tick
-        });
+        require(pair != address(0),"Pool not exist");
+        uint liquidity = IERC20(pair).balanceOf(msg.sender);
 
-        // (upper tick - lower tick) / 2
+        IERC20(pair).transferFrom(msg.sender, address(this),liquidity);
 
+        IERC20(pair).approve(ROUTER, liquidity); //contract
+     
+        (amountA, amountB) = 
+        IUniswap(ROUTER).removeLiquidity(
+            _tokenA, _tokenB, liquidity, 1,1 , msg.sender, block.timestamp + 1 hours
+        );
 
-        amountOut = swapRouter.exactInputSingle(params);
-
-    } 
-
-function swapExactOutputSingle(uint256 amountOut, uint256 amountInMaximum) external returns (uint256 amountIn) {
-        TransferHelper.safeTransferFrom(DAI, msg.sender, address(this), amountInMaximum);
-
-        TransferHelper.safeApprove(DAI, address(swapRouter), amountInMaximum);
-
-        ISwapRouter.ExactOutputSingleParams memory params =
-            ISwapRouter.ExactOutputSingleParams({
-                tokenIn: DAI,
-                tokenOut: WETH9,
-                fee: poolFee,
-                recipient: msg.sender,
-                deadline: block.timestamp,
-                amountOut: amountOut,
-                amountInMaximum: amountInMaximum,
-                sqrtPriceLimitX96: 0
-            });
-
-        amountIn = swapRouter.exactOutputSingle(params);
-
-        if (amountIn < amountInMaximum) {
-            TransferHelper.safeApprove(DAI, address(swapRouter), 0);
-            TransferHelper.safeTransfer(DAI, msg.sender, amountInMaximum - amountIn);
-        }
     }
 
-    // Multi hop where we specify the pool to traverse
-    function swapExactOutputMultihop(uint256 amountOut, uint256 amountInMaximum) external returns (uint256 amountIn) {
-        TransferHelper.safeTransferFrom(DAI, msg.sender, address(this), amountInMaximum);
-        TransferHelper.safeApprove(DAI, address(swapRouter), amountInMaximum);
 
-        ISwapRouter.ExactOutputParams memory params =
-            ISwapRouter.ExactOutputParams({
-                path: abi.encodePacked(WETH9, poolFee, USDC, poolFee, DAI),
-                recipient: msg.sender,
-                deadline: block.timestamp,
-                amountOut: amountOut,
-                amountInMaximum: amountInMaximum
-            });
+    function swap(
+        uint _amountIn,
+        uint _amountOutMin, 
+        address _tokenA, 
+        address _tokenB, 
+        address _to
+    ) public returns (uint[] memory) {
 
-        amountIn = swapRouter.exactOutput(params);
+        IERC20(_tokenA).transferFrom(msg.sender, address(this), _amountIn);
 
-        if (amountIn < amountInMaximum) {
-            TransferHelper.safeApprove(DAI, address(swapRouter), 0);
-            TransferHelper.safeTransferFrom(DAI, address(this), msg.sender, amountInMaximum - amountIn);
-        }
+        IERC20(_tokenA).approve(ROUTER, _amountIn);
+
+        address[] memory path = new address[](2);
+        path[0] = _tokenA;
+        path[1] = _tokenB;
+
+        uint[] memory amounts = IUniswap(ROUTER).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp + 500); 
+        // uint[] memory amounts = IUniswap(ROUTER).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp + 500);
+        return amounts;
     }
+
+
 
 }
